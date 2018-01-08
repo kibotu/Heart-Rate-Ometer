@@ -3,9 +3,13 @@
 
 ## Introduction
 
-[How-it-works](https://github.com/phishman3579/android-heart-rate-monitor/wiki/How-it-works)
+Kotlin Rx Library port of https://github.com/phishman3579/android-heart-rate-monitor 
 
-![Screenshot](https://raw.githubusercontent.com/kibotu/Heart-Rate-Ometer/master/screenshot.png) ![Screenshot](https://raw.githubusercontent.com/kibotu/Heart-Rate-Ometer/master/screenshot2.png)
+![Screenshot](https://raw.githubusercontent.com/kibotu/Heart-Rate-Ometer/master/hand_on_phone.png) ![Screenshot](https://raw.githubusercontent.com/kibotu/Heart-Rate-Ometer/master/hand_on_phone.png)
+
+## How-it-works
+
+https://github.com/phishman3579/android-heart-rate-monitor/wiki/How-it-works.
 
 ## [How to use]
 
