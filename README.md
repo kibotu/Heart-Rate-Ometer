@@ -3,19 +3,39 @@
 
 ## Introduction
 
-Kotlin Rx Library port of https://github.com/phishman3579/android-heart-rate-monitor 
+Measures human heart rate using camera and flash light.
 
-![Screenshot](https://raw.githubusercontent.com/kibotu/Heart-Rate-Ometer/master/hand_on_phone.png) ![Screenshot](https://raw.githubusercontent.com/kibotu/Heart-Rate-Ometer/master/hand_on_phone.png)
+![Screenshot](https://raw.githubusercontent.com/kibotu/Heart-Rate-Ometer/master/hand_on_phone.png) ![Screenshot](https://raw.githubusercontent.com/kibotu/Heart-Rate-Ometer/master/screenshot.png)
 
 ## How-it-works
 
 https://github.com/phishman3579/android-heart-rate-monitor/wiki/How-it-works.
 
-## [How to use]
+## How to use
+
+0 [Request camera permission](https://github.com/kibotu/Heart-Rate-Ometer/blob/master/app/src/main/kotlin/net/kibotu/heartrateometer/MainActivity.kt#L24-L27)
+
+     Manifest.permission.CAMERA
+
+1 [Add surfaceView to your layout](https://github.com/kibotu/Heart-Rate-Ometer/blob/master/app/src/main/res/layout/activity_main.xml#L18-L22) which is required for the camera preview 
+
+    <SurfaceView
+        android:id="@+id/preview"
+        android:layout_width="1dp"
+        android:layout_height="1dp"
+        android:visibility="visible" />
+        
+2 [Subscribe to the beats per minute stream](https://github.com/kibotu/Heart-Rate-Ometer/blob/master/app/src/main/kotlin/net/kibotu/heartrateometer/MainActivity.kt#L29-L30)
+
+    HeartRateOmeter()
+            .bpmUpdates(context, preview)
+            .subscribe(
+                    { bpm: Int -> label.text = "$bpm bpm" },
+                    Throwable::printStackTrace)
 
 ## How to install
 
-    compile 'com.github.kibotu:KalmanRx:-SNAPSHOT'
+    implementation 'com.github.kibotu:Heart-Rate-Ometer:-SNAPSHOT'
 
 ## How to build
 
@@ -28,16 +48,16 @@ https://github.com/phishman3579/android-heart-rate-monitor/wiki/How-it-works.
 #### Build Requirements
 
 - JDK8
-- Android Build Tools 27.0.3
-- Android SDK 7
+- Android Build Tools 27.0.2
+- Android SDK 27
 
 ## How to use
 
 
 ## Contributors
 
-[Jan Rabe](jan.rabe@kibotu.net)
-[Justin Wetherell](phishman3579@gmail.com)
+- [Jan Rabe](jan.rabe@kibotu.net) ported as Kotlin Rx Library: https://github.com/phishman3579/android-heart-rate-monitor written by
+- [Justin Wetherell](phishman3579@gmail.com)
 
 ###License
 <pre>
