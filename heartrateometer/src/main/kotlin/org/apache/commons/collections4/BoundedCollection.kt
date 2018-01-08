@@ -1,4 +1,4 @@
-package org.apache.commons.collections4;
+package org.apache.commons.collections4
 
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
@@ -17,34 +17,35 @@ package org.apache.commons.collections4;
  * limitations under the License.
  */
 
-import java.util.Collection;
-
 /**
  * Defines a collection that is bounded in size.
- * <p>
+ *
+ *
  * The size of the collection can vary, but it can never exceed a preset
  * maximum number of elements. This interface allows the querying of details
  * associated with the maximum number of elements.
  *
  * @version $Id: BoundedCollection.html 887892 2013-11-24 13:43:45Z tn $
- * @see CollectionUtils#isFull
- * @see CollectionUtils#maxSize
+ * @see CollectionUtils.isFull
+ *
+ * @see CollectionUtils.maxSize
+ *
  * @since 3.0
  */
-public interface BoundedCollection<E> extends Collection<E> {
+interface BoundedCollection<E> : java.util.Collection<E> {
 
     /**
      * Returns true if this collection is full and no new elements can be added.
      *
-     * @return <code>true</code> if the collection is full
+     * @return `true` if the collection is full
      */
-    boolean isFull();
+    val isFull: Boolean
 
     /**
      * Gets the maximum size of the collection (the bound).
      *
      * @return the maximum number of elements the collection can hold
      */
-    int maxSize();
+    fun maxSize(): Int
 
 }
