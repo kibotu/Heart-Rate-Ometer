@@ -1,0 +1,45 @@
+language: android
+jdk: oraclejdk8
+
+git:
+  depth: 10000
+
+env:
+  global:
+
+    - SLAVE_AAPT_TIMEOUT=30
+    - TERM=dumb
+    - GRADLE_OPTS="-XX:MaxPermSize=1024m -XX:+CMSClassUnloadingEnabled -XX:+HeapDumpOnOutOfMemoryError -Xmx2048m  -Dfile.encoding=UTF-8"
+
+matrix:
+  fast_finish: true
+
+android:
+  components:
+
+    - platform-tools
+    - tools
+    - build-tools-27.0.3
+    - android-27
+    - extra-google-m2repository
+    - extra-android-m2repository
+
+  licenses:
+    - android-sdk-license-.+
+
+before_install:
+  - git submodule update --init --recursive
+  - chmod u+x gradlew
+  - android list sdk --no-ui --all --extended
+  - android list targets
+
+install: true
+
+script:
+  - ./gradlew -v
+  - ./gradlew clean build --stacktrace
+
+after_failure: true
+
+notifications:
+  email: false
