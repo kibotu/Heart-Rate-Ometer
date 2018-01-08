@@ -9,7 +9,7 @@ Measures human heart rate using camera and flash light.
 
 ## How-it-works
 
-https://github.com/phishman3579/android-heart-rate-monitor/wiki/How-it-works.
+[https://github.com/phishman3579/android-heart-rate-monitor/wiki/How-it-works.](https://github.com/phishman3579/android-heart-rate-monitor/wiki/How-it-works.)
 
 ## How to use
 
