@@ -1,5 +1,13 @@
 buildscript {
+
     ext.kotlin_version = '1.2.10'
+    ext.retrofit_version = '2.3.0'
+
+    ext.compileSdkVer = 27
+    ext.buildToolsVer = '27.0.2'
+    ext.minSdkVer = 15
+    ext.targetSdkVer = 27
+
     repositories {
         google()
         jcenter()
@@ -7,6 +15,7 @@ buildscript {
     dependencies {
         classpath 'com.android.tools.build:gradle:3.0.1'
         classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
+        classpath 'com.github.dcendents:android-maven-gradle-plugin:2.0'
     }
 }
 
