@@ -32,6 +32,7 @@ before_install:
   - chmod u+x gradlew
   - android list sdk --no-ui --all --extended
   - android list targets
+  - yes | sdkmanager "platforms;android-27"
 
 install: true
 
