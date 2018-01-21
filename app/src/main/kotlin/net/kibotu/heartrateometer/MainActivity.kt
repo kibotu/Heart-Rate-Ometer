@@ -26,7 +26,9 @@ class MainActivity : AppCompatActivity() {
             return
         }
 
-        subscription?.add(HeartRateOmeter().bpmUpdates(preview)
+        subscription?.add(HeartRateOmeter()
+                // .withAverageAfterSeconds(10)
+                .bpmUpdates(preview)
                 .subscribe(::onBpm, Throwable::printStackTrace))
     }
 

@@ -41,9 +41,9 @@ open class HeartRateOmeter {
 
     protected var wakelock: PowerManager.WakeLock? = null
 
-    protected var previewCallback: Camera.PreviewCallback
+    protected lateinit var previewCallback: Camera.PreviewCallback
 
-    protected var surfaceCallback: SurfaceHolder.Callback
+    protected lateinit var surfaceCallback: SurfaceHolder.Callback
 
     protected val publishSubject: PublishSubject<Bpm>
 
@@ -55,9 +55,14 @@ open class HeartRateOmeter {
         get() = context?.get()?.getSystemService(Context.POWER_SERVICE) as? PowerManager?
 
     init {
-        previewCallback = createCameraPreviewCallback()
-        surfaceCallback = createSurfaceHolderCallback()
         publishSubject = PublishSubject.create<Bpm>()
+    }
+
+    var averageTimer: Int? = null
+
+    fun withAverageAfterSeconds(avarageTimer: Int): HeartRateOmeter {
+        this.averageTimer = avarageTimer
+        return this
     }
 
     fun bpmUpdates(surfaceView: SurfaceView): Observable<Bpm> {
@@ -65,6 +70,14 @@ open class HeartRateOmeter {
     }
 
     protected fun bpmUpdates(context: Context, surfaceHolder: SurfaceHolder): Observable<Bpm> {
+
+        previewCallback = if (averageTimer == null)
+            createCameraPreviewCallback2()
+        else
+            createCameraPreviewCallback()
+
+        surfaceCallback = createSurfaceHolderCallback()
+
         this.context = WeakReference(context)
         this.surfaceHolder = surfaceHolder
         return publishSubject
@@ -189,8 +202,7 @@ open class HeartRateOmeter {
         }
     }
 
-    @Deprecated(message = "use #createCameraPreviewCallback instead")
-    protected fun createCameraPreviewCallback2(): Camera.PreviewCallback {
+    protected fun createCameraPreviewCallback(): Camera.PreviewCallback {
         return object : Camera.PreviewCallback {
 
             val PROCESSING = AtomicBoolean(false)
@@ -278,7 +290,7 @@ open class HeartRateOmeter {
         }
     }
 
-    protected fun createCameraPreviewCallback(): Camera.PreviewCallback {
+    protected fun createCameraPreviewCallback2(): Camera.PreviewCallback {
 
         return object : Camera.PreviewCallback {
 
@@ -367,7 +379,7 @@ open class HeartRateOmeter {
                 val endTime = System.currentTimeMillis()
                 val totalTimeInSecs = (endTime - startTime) / 1000.0
 
-                if (totalTimeInSecs >= 10) {
+                if (totalTimeInSecs >= averageTimer!!) {
                     val beatsPerSecond = beats / totalTimeInSecs
                     val beatsPerMinute = (beatsPerSecond * 60.0).toInt()
                     if (beatsPerMinute < 30 || beatsPerMinute > 180) {
