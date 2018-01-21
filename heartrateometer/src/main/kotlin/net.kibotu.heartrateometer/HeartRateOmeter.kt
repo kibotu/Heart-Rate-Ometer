@@ -72,9 +72,9 @@ open class HeartRateOmeter {
     protected fun bpmUpdates(context: Context, surfaceHolder: SurfaceHolder): Observable<Bpm> {
 
         previewCallback = if (averageTimer == null)
-            createCameraPreviewCallback2()
-        else
             createCameraPreviewCallback()
+        else
+            createCameraPreviewCallback2()
 
         surfaceCallback = createSurfaceHolderCallback()
 
