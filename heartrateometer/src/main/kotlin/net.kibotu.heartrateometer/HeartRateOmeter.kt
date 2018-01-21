@@ -1,16 +1,24 @@
 package net.kibotu.heartrateometer
 
 import android.content.Context
+import android.graphics.Point
 import android.hardware.Camera
+import android.os.Build
 import android.os.PowerManager
+import android.util.DisplayMetrics
 import android.util.Log
 import android.view.SurfaceHolder
 import android.view.SurfaceView
+import android.view.WindowManager
+import de.charite.balsam.utils.camera.CameraModule
+import de.charite.balsam.utils.camera.CameraSupport
 import io.reactivex.Observable
 import io.reactivex.subjects.PublishSubject
+import net.kibotu.heartrateometer.ImageProcessing.decodeYUV420SPtoRedAvg
 import org.apache.commons.collections4.queue.CircularFifoQueue
 import java.lang.ref.WeakReference
 import java.util.concurrent.atomic.AtomicBoolean
+
 
 /**
  * Created by <a href="https://about.me/janrabe">Jan Rabe</a>.
@@ -19,40 +27,49 @@ open class HeartRateOmeter {
 
     private val TAG: String = javaClass.simpleName
 
-    var enableDebug: Boolean = false
+    companion object {
+        var enableLogging: Boolean = true
+    }
 
-    var wakeLockTimeOut: Long = 10_000
+    enum class PulseType { OFF, ON }
+
+    data class Bpm(val value: Int, val type: PulseType)
+
+    private var wakeLockTimeOut: Long = 10_000
 
     protected var surfaceHolder: SurfaceHolder? = null
 
-    protected var camera: Camera? = null
-
     protected var wakelock: PowerManager.WakeLock? = null
 
-    protected var previewCallback: Camera.PreviewCallback? = null
+    protected var previewCallback: Camera.PreviewCallback
 
-    protected var surfaceCallback: SurfaceHolder.Callback? = null
+    protected var surfaceCallback: SurfaceHolder.Callback
 
-    protected val publishSubject: PublishSubject<Int>
+    protected val publishSubject: PublishSubject<Bpm>
 
     protected var context: WeakReference<Context>? = null
+
+    protected var cameraSupport: CameraSupport? = null
+
+    private var powerManager: PowerManager? = null
+        get() = context?.get()?.getSystemService(Context.POWER_SERVICE) as? PowerManager?
 
     init {
         previewCallback = createCameraPreviewCallback()
         surfaceCallback = createSurfaceHolderCallback()
-        publishSubject = PublishSubject.create<Int>()
+        publishSubject = PublishSubject.create<Bpm>()
     }
 
-    fun bpmUpdates(context: Context, surfaceView: SurfaceView): Observable<Int> {
-        return bpmUpdates(context, surfaceView.holder)
+    fun bpmUpdates(surfaceView: SurfaceView): Observable<Bpm> {
+        return bpmUpdates(surfaceView.context, surfaceView.holder)
     }
 
-    fun bpmUpdates(context: Context, surfaceHolder: SurfaceHolder): Observable<Int> {
+    protected fun bpmUpdates(context: Context, surfaceHolder: SurfaceHolder): Observable<Bpm> {
         this.context = WeakReference(context)
         this.surfaceHolder = surfaceHolder
         return publishSubject
                 .doOnSubscribe {
-                    publishSubject.onNext(-1)
+                    publishSubject.onNext(Bpm(-1, PulseType.OFF))
                     start()
                 }
                 .doOnDispose { cleanUp() }
@@ -60,18 +77,83 @@ open class HeartRateOmeter {
 
     protected fun start() {
         log("start")
-        wakelock = (context?.get()?.getSystemService(Context.POWER_SERVICE) as PowerManager)
-                .newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, TAG)
 
+        wakelock = powerManager?.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, context?.get()?.javaClass?.canonicalName)
         wakelock?.acquire(wakeLockTimeOut)
-        camera = Camera.open()
+
+        context?.get()?.let {
+            cameraSupport = CameraModule.provideCameraSupport(context = it).open(0)
+        }
+
+        // portrait
+        cameraSupport?.setDisplayOrientation(90)
+        log(cameraSupport?.getOrientation(0).toString())
 
         surfaceHolder?.addCallback(surfaceCallback)
         surfaceHolder?.setType(SurfaceHolder.SURFACE_TYPE_PUSH_BUFFERS)
+
+        addCallbacks()
+
+        startPreview()
+    }
+
+    private fun addCallbacks() {
+        try {
+            cameraSupport?.setPreviewDisplay(surfaceHolder!!)
+            cameraSupport?.setPreviewCallback(previewCallback)
+        } catch (throwable: Throwable) {
+            if (enableLogging)
+                throwable.printStackTrace()
+        }
+    }
+
+    data class Dimension(val width: Int, val height: Int)
+
+    private fun getScreenDimensions(): Dimension {
+
+        val dm = DisplayMetrics()
+        val display: android.view.Display = (context?.get()?.getSystemService(Context.WINDOW_SERVICE) as WindowManager).defaultDisplay
+        display.getMetrics(dm)
+
+        var screenWidth = dm.widthPixels
+        var screenHeight = dm.heightPixels
+
+        if (Build.VERSION.SDK_INT in 14..16) {
+            try {
+                screenWidth = android.view.Display::class.java.getMethod("getRawWidth").invoke(display) as Int
+                screenHeight = android.view.Display::class.java.getMethod("getRawHeight").invoke(display) as Int
+            } catch (ignored: Exception) {
+            }
+
+        }
+        if (Build.VERSION.SDK_INT >= 17) {
+            try {
+                val realSize = Point()
+                android.view.Display::class.java.getMethod("getRealSize", Point::class.java).invoke(display, realSize)
+                screenWidth = realSize.x
+                screenHeight = realSize.y
+            } catch (ignored: Exception) {
+            }
+
+        }
+
+        return Dimension(screenWidth, screenHeight)
+    }
+
+    private fun getScreenDimensionsLandscape(): Dimension {
+        val (width, height) = getScreenDimensions()
+        return Dimension(Math.max(width, height), Math.min(width, height))
+    }
+
+    private fun startPreview() {
+        val screenDimensionsLandscape = getScreenDimensionsLandscape()
+        setCameraParameter(screenDimensionsLandscape.width, screenDimensionsLandscape.height)
+        cameraSupport?.startPreview()
     }
 
     protected fun setCameraParameter(width: Int, height: Int) {
-        val parameters = camera?.parameters
+
+        val parameters = cameraSupport?.parameters
         parameters?.flashMode = Camera.Parameters.FLASH_MODE_TORCH
 
         if (parameters?.maxExposureCompensation != parameters?.minExposureCompensation) {
@@ -84,38 +166,31 @@ open class HeartRateOmeter {
             parameters.autoWhiteBalanceLock = true
         }
 
-        camera?.parameters = parameters
-
         getSmallestPreviewSize(width, height, parameters)?.let {
             parameters?.setPreviewSize(it.width, it.height)
             log("Using width ${it.width} and height ${it.height}")
         }
-        camera?.parameters = parameters
+
+        cameraSupport?.parameters = parameters
     }
 
     protected fun createSurfaceHolderCallback(): SurfaceHolder.Callback {
         return object : SurfaceHolder.Callback {
 
             override fun surfaceCreated(holder: SurfaceHolder) {
-                try {
-                    camera?.setPreviewDisplay(surfaceHolder)
-                    camera?.setPreviewCallback(previewCallback)
-                } catch (throwable: Throwable) {
-                    if (enableDebug)
-                        throwable.printStackTrace()
-                }
+                addCallbacks()
             }
 
             override fun surfaceChanged(holder: SurfaceHolder, format: Int, width: Int, height: Int) {
-                setCameraParameter(width, height)
-                camera?.startPreview()
+                startPreview()
             }
 
             override fun surfaceDestroyed(holder: SurfaceHolder) {}
         }
     }
 
-    protected fun createCameraPreviewCallback(): Camera.PreviewCallback {
+    @Deprecated(message = "use #createCameraPreviewCallback instead")
+    protected fun createCameraPreviewCallback2(): Camera.PreviewCallback {
         return object : Camera.PreviewCallback {
 
             val PROCESSING = AtomicBoolean(false)
@@ -156,7 +231,6 @@ open class HeartRateOmeter {
                 val height = size.height
 
 
-                // todo check if height/width is mixed up on purpose, might be landscape/portrait issue
                 val imgAvg = ImageProcessing.decodeYUV420SPtoRedAvg(data.clone(), width, height)
 
                 sampleQueue.add(imgAvg.toDouble())
@@ -195,9 +269,138 @@ open class HeartRateOmeter {
 
                 // log("bpm=$bpm")
 
-                publishSubject.onNext(bpm)
+                publishSubject.onNext(Bpm(bpm, PulseType.ON))
 
                 counter++
+
+                PROCESSING.set(false)
+            }
+        }
+    }
+
+    protected fun createCameraPreviewCallback(): Camera.PreviewCallback {
+
+        return object : Camera.PreviewCallback {
+
+            internal var beatsIndex = 0
+            internal var beats = 0.0
+            internal var startTime = System.currentTimeMillis()
+            internal var averageIndex = 0
+
+            internal val PROCESSING = AtomicBoolean(false)
+
+            internal val AVERAGE_ARRAY_SIZE = 4
+            internal val AVERAGE_ARRAY = IntArray(AVERAGE_ARRAY_SIZE)
+
+            internal val BEATS_ARRAY_SIZE = 3
+            internal val BEATS_ARRAY = IntArray(BEATS_ARRAY_SIZE)
+
+            internal var currentPixelType: PulseType = PulseType.OFF
+
+            private var previousBeatsAverage: Int = 0
+
+            override fun onPreviewFrame(data: ByteArray?, camera: Camera) {
+
+
+                if (data == null) {
+                    log("Data is null!")
+                    return
+                }
+
+                val size = camera.parameters.previewSize
+                if (size == null) {
+                    log("Size is null!")
+                    return
+                }
+
+                if (!PROCESSING.compareAndSet(false, true)) {
+                    log("Have to return...")
+                    return
+                }
+
+                val width = size.width
+                val height = size.height
+
+                // Logger.d("SIZE: width: " + width + ", height: " + height);
+
+                val imageAverage = decodeYUV420SPtoRedAvg(data.clone(), width, height)
+
+                if (imageAverage == 0 || imageAverage == 255) {
+                    PROCESSING.set(false)
+                    return
+                }
+
+                var averageArrayAverage = 0
+                var averageArrayCount = 0
+
+                for (averageEntry in AVERAGE_ARRAY) {
+                    if (averageEntry > 0) {
+                        averageArrayAverage += averageEntry
+                        averageArrayCount++
+                    }
+                }
+
+                val rollingAverage = if (averageArrayCount > 0) averageArrayAverage / averageArrayCount else 0
+                var newType = currentPixelType
+
+                if (imageAverage < rollingAverage) {
+                    newType = PulseType.ON
+                    if (newType != currentPixelType) {
+                        beats++
+                    }
+                } else if (imageAverage > rollingAverage) {
+                    newType = PulseType.OFF
+                }
+
+                if (averageIndex == AVERAGE_ARRAY_SIZE) {
+                    averageIndex = 0
+                }
+
+                AVERAGE_ARRAY[averageIndex] = imageAverage
+                averageIndex++
+
+                if (newType != currentPixelType) {
+                    currentPixelType = newType
+                    publishSubject.onNext(Bpm(previousBeatsAverage, currentPixelType))
+                }
+
+                val endTime = System.currentTimeMillis()
+                val totalTimeInSecs = (endTime - startTime) / 1000.0
+
+                if (totalTimeInSecs >= 10) {
+                    val beatsPerSecond = beats / totalTimeInSecs
+                    val beatsPerMinute = (beatsPerSecond * 60.0).toInt()
+                    if (beatsPerMinute < 30 || beatsPerMinute > 180) {
+                        startTime = System.currentTimeMillis()
+                        beats = 0.0
+                        PROCESSING.set(false)
+                        return
+                    }
+
+                    if (beatsIndex == BEATS_ARRAY_SIZE) {
+                        beatsIndex = 0
+                    }
+
+                    BEATS_ARRAY[beatsIndex] = beatsPerMinute
+                    beatsIndex++
+
+                    var beatsArrayAverage = 0
+                    var beatsArrayCount = 0
+
+                    for (beatsEntry in BEATS_ARRAY) {
+                        if (beatsEntry > 0) {
+                            beatsArrayAverage += beatsEntry
+                            beatsArrayCount++
+                        }
+                    }
+
+                    val beatsAverage = beatsArrayAverage / beatsArrayCount
+                    previousBeatsAverage = beatsArrayAverage
+                    publishSubject.onNext(Bpm(beatsAverage, currentPixelType))
+
+                    startTime = System.currentTimeMillis()
+                    beats = 0.0
+                }
 
                 PROCESSING.set(false)
             }
@@ -290,17 +493,17 @@ open class HeartRateOmeter {
             wakelock?.release()
         }
 
-        camera?.apply {
+        cameraSupport?.apply {
             setPreviewCallback(null)
             stopPreview()
             release()
         }
 
-        camera = null
+        cameraSupport = null
     }
 
     private fun log(message: String?) {
-        if (enableDebug)
+        if (enableLogging)
             Log.d(TAG, "" + message)
     }
 }

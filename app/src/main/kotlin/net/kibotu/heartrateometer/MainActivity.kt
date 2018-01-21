@@ -26,12 +26,12 @@ class MainActivity : AppCompatActivity() {
             return
         }
 
-        subscription?.add(HeartRateOmeter().bpmUpdates(this, preview)
+        subscription?.add(HeartRateOmeter().bpmUpdates(preview)
                 .subscribe(::onBpm, Throwable::printStackTrace))
     }
 
     @SuppressLint("SetTextI18n")
-    private fun onBpm(bpm: Int) {
+    private fun onBpm(bpm: HeartRateOmeter.Bpm) {
         label.text = "$bpm bpm"
     }
 
