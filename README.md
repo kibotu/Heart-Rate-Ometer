@@ -11,6 +11,18 @@ Measures human heart rate using camera and flash light.
 
 [https://github.com/phishman3579/android-heart-rate-monitor/wiki/How-it-works.](https://github.com/phishman3579/android-heart-rate-monitor/wiki/How-it-works.)
 
+## How to install
+
+    repositories {
+        maven {
+            url "https://jitpack.io"
+        }
+    }
+
+    dependencies {
+        implementation 'com.github.kibotu:Heart-Rate-Ometer:-SNAPSHOT'
+    }
+    
 ## How to use
 
 0 [Request camera permission](https://github.com/kibotu/Heart-Rate-Ometer/blob/master/app/src/main/kotlin/net/kibotu/heartrateometer/MainActivity.kt#L24-L27)
@@ -32,10 +44,6 @@ Measures human heart rate using camera and flash light.
             .subscribe(
                     { bpm: Int -> label.text = "$bpm bpm" },
                     Throwable::printStackTrace)
-
-## How to install
-
-    implementation 'com.github.kibotu:Heart-Rate-Ometer:-SNAPSHOT'
 
 ## How to build
 
