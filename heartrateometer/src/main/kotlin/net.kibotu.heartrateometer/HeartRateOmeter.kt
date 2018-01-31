@@ -14,7 +14,6 @@ import de.charite.balsam.utils.camera.CameraModule
 import de.charite.balsam.utils.camera.CameraSupport
 import io.reactivex.Observable
 import io.reactivex.subjects.PublishSubject
-import net.kibotu.heartrateometer.ImageProcessing.decodeYUV420SPtoRedAvg
 import org.apache.commons.collections4.queue.CircularFifoQueue
 import java.lang.ref.WeakReference
 import java.util.concurrent.atomic.AtomicBoolean
@@ -58,7 +57,7 @@ open class HeartRateOmeter {
         publishSubject = PublishSubject.create<Bpm>()
     }
 
-    var averageTimer: Int? = null
+    var averageTimer: Int = 0
 
     fun withAverageAfterSeconds(avarageTimer: Int): HeartRateOmeter {
         this.averageTimer = avarageTimer
@@ -335,7 +334,7 @@ open class HeartRateOmeter {
 
                 // Logger.d("SIZE: width: " + width + ", height: " + height);
 
-                val imageAverage = decodeYUV420SPtoRedAvg(data.clone(), width, height)
+                val imageAverage = MathHelper.decodeYUV420SPtoRedAvg(data.clone(), width, height)
 
                 if (imageAverage == 0 || imageAverage == 255) {
                     PROCESSING.set(false)
@@ -379,7 +378,7 @@ open class HeartRateOmeter {
                 val endTime = System.currentTimeMillis()
                 val totalTimeInSecs = (endTime - startTime) / 1000.0
 
-                if (totalTimeInSecs >= averageTimer!!) {
+                if (totalTimeInSecs >= averageTimer) {
                     val beatsPerSecond = beats / totalTimeInSecs
                     val beatsPerMinute = (beatsPerSecond * 60.0).toInt()
                     if (beatsPerMinute < 30 || beatsPerMinute > 180) {
@@ -407,7 +406,8 @@ open class HeartRateOmeter {
                     }
 
                     val beatsAverage = beatsArrayAverage / beatsArrayCount
-                    previousBeatsAverage = beatsArrayAverage
+                    previousBeatsAverage = beatsAverage
+
                     publishSubject.onNext(Bpm(beatsAverage, currentPixelType))
 
                     startTime = System.currentTimeMillis()

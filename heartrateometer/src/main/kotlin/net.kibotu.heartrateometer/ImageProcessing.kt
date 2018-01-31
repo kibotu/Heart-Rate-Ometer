@@ -7,7 +7,6 @@ package net.kibotu.heartrateometer
  */
 internal object ImageProcessing {
 
-
     private fun decodeYUV420SPtoRedSum(yuv420sp: ByteArray?, width: Int, height: Int): Int {
         if (yuv420sp == null) return 0
 

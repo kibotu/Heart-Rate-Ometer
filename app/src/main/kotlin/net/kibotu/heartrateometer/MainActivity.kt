@@ -7,6 +7,7 @@ import android.os.Bundle
 import android.support.v4.app.ActivityCompat
 import android.support.v4.content.ContextCompat
 import android.support.v7.app.AppCompatActivity
+import android.util.Log
 import io.reactivex.disposables.CompositeDisposable
 import kotlinx.android.synthetic.main.activity_main.*
 import net.kibotu.heartrateometer.app.R
@@ -27,13 +28,14 @@ class MainActivity : AppCompatActivity() {
         }
 
         subscription?.add(HeartRateOmeter()
-                // .withAverageAfterSeconds(10)
+                .withAverageAfterSeconds(4)
                 .bpmUpdates(preview)
                 .subscribe(::onBpm, Throwable::printStackTrace))
     }
 
     @SuppressLint("SetTextI18n")
     private fun onBpm(bpm: HeartRateOmeter.Bpm) {
+        Log.v("HeartRateOmeter", "[onBpm] $bpm")
         label.text = "$bpm bpm"
     }
 
