@@ -57,7 +57,7 @@ open class HeartRateOmeter {
         publishSubject = PublishSubject.create<Bpm>()
     }
 
-    var averageTimer: Int = 0
+    var averageTimer: Int = -1
 
     fun withAverageAfterSeconds(avarageTimer: Int): HeartRateOmeter {
         this.averageTimer = avarageTimer
@@ -70,7 +70,7 @@ open class HeartRateOmeter {
 
     protected fun bpmUpdates(context: Context, surfaceHolder: SurfaceHolder): Observable<Bpm> {
 
-        previewCallback = if (averageTimer == null)
+        previewCallback = if (averageTimer == -1)
             createCameraPreviewCallback()
         else
             createCameraPreviewCallback2()
@@ -169,15 +169,17 @@ open class HeartRateOmeter {
         parameters?.flashMode = Camera.Parameters.FLASH_MODE_TORCH
 
         if (parameters?.maxExposureCompensation != parameters?.minExposureCompensation) {
-            parameters?.exposureCompensation = 0
+            //  parameters?.exposureCompensation = 0
         }
         if (parameters?.isAutoExposureLockSupported == true) {
-            parameters.autoExposureLock = true
+            // parameters.autoExposureLock = true
         }
         if (parameters?.isAutoWhiteBalanceLockSupported == true) {
-            parameters.autoWhiteBalanceLock = true
+            // parameters.autoWhiteBalanceLock = true
         }
 
+
+        // parameters?.setPreviewSize(width, height)
         getSmallestPreviewSize(width, height, parameters)?.let {
             parameters?.setPreviewSize(it.width, it.height)
             log("Using width ${it.width} and height ${it.height}")
@@ -242,7 +244,11 @@ open class HeartRateOmeter {
                 val height = size.height
 
 
-                val imgAvg = ImageProcessing.decodeYUV420SPtoRedAvg(data.clone(), width, height)
+                val imgAvg = MathHelper.decodeYUV420SPtoRedAvg(data.clone(), width, height)
+                if (imgAvg == 0 || imgAvg < 199) {
+                    PROCESSING.set(false)
+                    return
+                }
 
                 sampleQueue.add(imgAvg.toDouble())
                 timeQueue.add(System.currentTimeMillis())
@@ -335,11 +341,13 @@ open class HeartRateOmeter {
                 // Logger.d("SIZE: width: " + width + ", height: " + height);
 
                 val imageAverage = MathHelper.decodeYUV420SPtoRedAvg(data.clone(), width, height)
-
-                if (imageAverage == 0 || imageAverage == 255) {
+                log("imageAverage not started: " + imageAverage)
+                if (imageAverage == 0 || imageAverage < 199) {
                     PROCESSING.set(false)
                     return
                 }
+
+                log("imageAverage: " + imageAverage)
 
                 var averageArrayAverage = 0
                 var averageArrayCount = 0
@@ -352,6 +360,9 @@ open class HeartRateOmeter {
                 }
 
                 val rollingAverage = if (averageArrayCount > 0) averageArrayAverage / averageArrayCount else 0
+
+                log("rollingAverage: " + rollingAverage)
+
                 var newType = currentPixelType
 
                 if (imageAverage < rollingAverage) {
@@ -377,7 +388,7 @@ open class HeartRateOmeter {
 
                 val endTime = System.currentTimeMillis()
                 val totalTimeInSecs = (endTime - startTime) / 1000.0
-
+                log("totalTimeInSecs: " + totalTimeInSecs + " >= averageTimer: " + averageTimer)
                 if (totalTimeInSecs >= averageTimer) {
                     val beatsPerSecond = beats / totalTimeInSecs
                     val beatsPerMinute = (beatsPerSecond * 60.0).toInt()
@@ -407,7 +418,7 @@ open class HeartRateOmeter {
 
                     val beatsAverage = beatsArrayAverage / beatsArrayCount
                     previousBeatsAverage = beatsAverage
-
+                    log("beatsAverage: " + beatsAverage)
                     publishSubject.onNext(Bpm(beatsAverage, currentPixelType))
 
                     startTime = System.currentTimeMillis()
