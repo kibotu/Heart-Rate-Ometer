@@ -11,6 +11,8 @@ import android.util.Log
 import io.reactivex.disposables.CompositeDisposable
 import kotlinx.android.synthetic.main.activity_main.*
 import net.kibotu.heartrateometer.app.R
+import net.kibotu.kalmanrx.jama.Matrix
+import net.kibotu.kalmanrx.jkalman.JKalman
 
 class MainActivity : AppCompatActivity() {
 
@@ -19,6 +21,7 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
+
     }
 
     private fun startWithPermissionCheck() {
@@ -27,19 +30,50 @@ class MainActivity : AppCompatActivity() {
             return
         }
 
-        subscription?.add(HeartRateOmeter()
-                .withAverageAfterSeconds(4)
+        val kalman = JKalman(2, 1)
+
+        // measurement [x]
+        val m = Matrix(1, 1)
+
+        // transitions for x, dx
+        val tr = arrayOf(doubleArrayOf(1.0, 0.0), doubleArrayOf(0.0, 1.0))
+        kalman.transition_matrix = Matrix(tr)
+
+        // 1s somewhere?
+        kalman.error_cov_post = kalman.error_cov_post.identity()
+
+
+        val bpmUpdates = HeartRateOmeter()
+                .withAverageAfterSeconds(3)
                 .bpmUpdates(preview)
-                .subscribe(::onBpm, Throwable::printStackTrace))
+                .subscribe({
+
+                    if (it.value == 0)
+                        return@subscribe
+
+                    m.set(0, 0, it.value.toDouble())
+
+                    // state [x, dx]
+                    val s = kalman.Predict()
+
+                    // corrected state [x, dx]
+                    val c = kalman.Correct(m)
+
+                    val bpm = it.copy(value = c.get(0, 0).toInt())
+                    Log.v("HeartRateOmeter", "[onBpm] ${it.value} => ${bpm.value}")
+                    onBpm(bpm)
+                }, Throwable::printStackTrace)
+
+        subscription?.add(bpmUpdates)
     }
 
     @SuppressLint("SetTextI18n")
     private fun onBpm(bpm: HeartRateOmeter.Bpm) {
-        Log.v("HeartRateOmeter", "[onBpm] $bpm")
+        // Log.v("HeartRateOmeter", "[onBpm] $bpm")
         label.text = "$bpm bpm"
     }
 
-    // region lifecycle
+// region lifecycle
 
     override fun onResume() {
         super.onResume()
@@ -60,9 +94,9 @@ class MainActivity : AppCompatActivity() {
             subscription?.dispose()
     }
 
-    // endregion
+// endregion
 
-    // region permission
+// region permission
 
     companion object {
         private val REQUEST_CAMERA_PERMISSION = 123
@@ -99,5 +133,5 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    // endregion
+// endregion
 }
