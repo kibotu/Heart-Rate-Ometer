@@ -23,7 +23,7 @@ import kotlin.reflect.KFunction1
 /**
  * Created by <a href="https://about.me/janrabe">Jan Rabe</a>.
  */
-open class HeartRateOmeter() {
+open class HeartRateOmeter {
 
     private val TAG: String = javaClass.simpleName
 
@@ -54,7 +54,7 @@ open class HeartRateOmeter() {
     private var powerManager: PowerManager? = null
         get() = context?.get()?.getSystemService(Context.POWER_SERVICE) as? PowerManager?
 
-    private var fingerDetectionListener: KFunction1<@ParameterName(name = "fingerDetected") Boolean, Unit>? = null
+    private var fingerDetectionListener: ((Boolean) -> Unit)? = null
 
     init {
         publishSubject = PublishSubject.create<Bpm>()
@@ -543,7 +543,7 @@ open class HeartRateOmeter() {
             Log.d(TAG, "" + message)
     }
 
-    fun setFingerDetectionListener(fingerDetectionListener: KFunction1<@ParameterName(name = "fingerDetected") Boolean, Unit>): HeartRateOmeter {
+    fun setFingerDetectionListener(fingerDetectionListener:((Boolean) -> Unit)?): HeartRateOmeter {
         this.fingerDetectionListener = fingerDetectionListener
         return this
     }
