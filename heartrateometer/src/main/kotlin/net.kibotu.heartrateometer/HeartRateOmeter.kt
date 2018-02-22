@@ -17,17 +17,18 @@ import io.reactivex.subjects.PublishSubject
 import org.apache.commons.collections4.queue.CircularFifoQueue
 import java.lang.ref.WeakReference
 import java.util.concurrent.atomic.AtomicBoolean
+import kotlin.reflect.KFunction1
 
 
 /**
  * Created by <a href="https://about.me/janrabe">Jan Rabe</a>.
  */
-open class HeartRateOmeter {
+open class HeartRateOmeter() {
 
     private val TAG: String = javaClass.simpleName
 
     companion object {
-        var enableLogging: Boolean = true
+        var enableLogging: Boolean = false
     }
 
     enum class PulseType { OFF, ON }
@@ -53,14 +54,16 @@ open class HeartRateOmeter {
     private var powerManager: PowerManager? = null
         get() = context?.get()?.getSystemService(Context.POWER_SERVICE) as? PowerManager?
 
+    private var fingerDetectionListener: KFunction1<@ParameterName(name = "fingerDetected") Boolean, Unit>? = null
+
     init {
         publishSubject = PublishSubject.create<Bpm>()
     }
 
     var averageTimer: Int = -1
 
-    fun withAverageAfterSeconds(avarageTimer: Int): HeartRateOmeter {
-        this.averageTimer = avarageTimer
+    fun withAverageAfterSeconds(averageTimer: Int): HeartRateOmeter {
+        this.averageTimer = averageTimer
         return this
     }
 
@@ -203,6 +206,13 @@ open class HeartRateOmeter {
         }
     }
 
+    private var fingerDetected: Boolean = false
+        set(value) {
+            if (field != value)
+                fingerDetectionListener?.invoke(value)
+            field = value
+        }
+
     protected fun createCameraPreviewCallback(): Camera.PreviewCallback {
         return object : Camera.PreviewCallback {
 
@@ -247,8 +257,11 @@ open class HeartRateOmeter {
                 val imgAvg = MathHelper.decodeYUV420SPtoRedAvg(data.clone(), width, height)
                 if (imgAvg == 0 || imgAvg < 199) {
                     PROCESSING.set(false)
+                    fingerDetected = false
                     return
                 }
+
+                fingerDetected = true
 
                 sampleQueue.add(imgAvg.toDouble())
                 timeQueue.add(System.currentTimeMillis())
@@ -528,5 +541,10 @@ open class HeartRateOmeter {
     private fun log(message: String?) {
         if (enableLogging)
             Log.d(TAG, "" + message)
+    }
+
+    fun setFingerDetectionListener(fingerDetectionListener: KFunction1<@ParameterName(name = "fingerDetected") Boolean, Unit>): HeartRateOmeter {
+        this.fingerDetectionListener = fingerDetectionListener
+        return this
     }
 }
