@@ -357,8 +357,10 @@ open class HeartRateOmeter {
                 log("imageAverage not started: " + imageAverage)
                 if (imageAverage == 0 || imageAverage < 199) {
                     PROCESSING.set(false)
+                    fingerDetected = false
                     return
                 }
+                fingerDetected = true
 
                 log("imageAverage: " + imageAverage)
 
