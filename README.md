@@ -13,16 +13,16 @@ Measures human heart rate using camera and flash light.
 
 ## How to install
 
-``groovy
-    repositories {
-        maven {
-            url "https://jitpack.io"
-        }
+```groovy
+repositories {
+    maven {
+        url "https://jitpack.io"
     }
+}
 
-    dependencies {
-        implementation 'com.github.kibotu:Heart-Rate-Ometer:-SNAPSHOT'
-    }
+dependencies {
+    implementation 'com.github.kibotu:Heart-Rate-Ometer:-SNAPSHOT'
+}
  ```
  
 ## How to use
