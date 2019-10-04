@@ -13,6 +13,7 @@ Measures human heart rate using camera and flash light.
 
 ## How to install
 
+``groovy
     repositories {
         maven {
             url "https://jitpack.io"
@@ -22,45 +23,61 @@ Measures human heart rate using camera and flash light.
     dependencies {
         implementation 'com.github.kibotu:Heart-Rate-Ometer:-SNAPSHOT'
     }
-    
+ ```
+ 
 ## How to use
 
 0 [Request camera permission](https://github.com/kibotu/Heart-Rate-Ometer/blob/master/app/src/main/kotlin/net/kibotu/heartrateometer/MainActivity.kt#L24-L27)
 
-     Manifest.permission.CAMERA
+```xml
+Manifest.permission.CAMERA
+```
 
 1 [Add surfaceView to your layout](https://github.com/kibotu/Heart-Rate-Ometer/blob/master/app/src/main/res/layout/activity_main.xml#L18-L22) which is required for the camera preview 
 
-    <SurfaceView
-        android:id="@+id/preview"
-        android:layout_width="1dp"
-        android:layout_height="1dp"
-        android:visibility="visible" />
-        
+```xml
+<SurfaceView
+    android:id="@+id/preview"
+    android:layout_width="1dp"
+    android:layout_height="1dp"
+    android:visibility="visible" />
+```
+
 2 [Subscribe to the beats per minute stream](https://github.com/kibotu/Heart-Rate-Ometer/blob/master/app/src/main/kotlin/net/kibotu/heartrateometer/MainActivity.kt#L29-L30)
 
-    HeartRateOmeter()
-            .bpmUpdates(context, preview)
-            .subscribe(
-                    { bpm: Int -> label.text = "$bpm bpm" },
-                    Throwable::printStackTrace)
+```kotlin
+HeartRateOmeter()
+    .bpmUpdates(context, preview)
+    .subscribe(
+            { bpm: Int -> label.text = "$bpm bpm" },
+            Throwable::printStackTrace)
+```
 
 ## How to build
 
-    graldew clean build
-    
+```bash
+graldew clean build
+``` 
+
 ### CI 
     
-    gradlew clean assembleRelease test javadoc
-    
+```bash   
+gradlew clean assembleRelease test javadoc
+```
+
 #### Build Requirements
 
 - JDK8
 - Android Build Tools 27.0.2
 - Android SDK 27
 
-## How to use
+### Notes
 
+Follow me on Twitter: [@wolkenschauer](https://twitter.com/wolkenschauer)
+
+Let me know what you think: [jan.rabe@kibotu.net](mailto:jan.rabe@kibotu.net)
+
+Contributions welcome!
 
 ## Contributors
 
